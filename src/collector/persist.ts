@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { Snapshot } from "../schema/snapshot";
+import type { Snapshot } from "../schema/snapshot.ts";
 
 export function snapshotFilename(scrapedAt: string): string {
   const minute = new Date(scrapedAt).toISOString().slice(0, 16);

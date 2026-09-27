@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "provider": "opencode",
+    "plan": "go",
+    "url": "https://opencode.ai/v2/docs/console/go"
+  },
+  "scrapedAt": "2026-09-27T13:00:00.000Z",
+  "models": [
+    {
+      "id": "opencode/kimi-k2.5",
+      "name": "Kimi K2.5",
+      "estimatedRequests": {
+        "fiveHour": -1,
+        "weekly": 12000,
+        "monthly": 40000
+      }
+    }
+  ]
+}

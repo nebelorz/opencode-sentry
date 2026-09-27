@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.24.0",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.18.0"
   },
   "scripts": {
     "lint": "eslint .",
@@ -13,6 +13,8 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "collect": "node src/cli/collect.ts",
+    "diff": "node src/cli/diff.ts",
     "build": "wrangler deploy --dry-run"
   },
   "devDependencies": {

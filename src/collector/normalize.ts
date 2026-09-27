@@ -1,4 +1,4 @@
-import type { QuotaValue } from "../schema/snapshot";
+import type { QuotaValue } from "../schema/snapshot.ts";
 
 export function nameKey(raw: string): string {
   return raw.replace(/\s+/g, " ").trim();

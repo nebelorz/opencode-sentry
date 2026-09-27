@@ -1,6 +1,6 @@
-import type { SnapshotModel } from "../schema/snapshot";
-import { nameKey, quotaCell } from "./normalize";
-import type { EndpointEntry, EstimatedRequestsTable } from "./parse";
+import type { SnapshotModel } from "../schema/snapshot.ts";
+import { nameKey, quotaCell } from "./normalize.ts";
+import type { EndpointEntry, EstimatedRequestsTable } from "./parse.ts";
 
 export function matchModels(
   estimated: EstimatedRequestsTable,

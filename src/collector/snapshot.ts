@@ -1,4 +1,4 @@
-import { snapshotSchema, type Snapshot, type SnapshotModel } from "../schema/snapshot";
+import { snapshotSchema, type Snapshot, type SnapshotModel } from "../schema/snapshot.ts";
 
 export const SOURCE_URL = "https://opencode.ai/v2/docs/console/go";
 

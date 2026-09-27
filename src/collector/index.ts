@@ -1,8 +1,8 @@
-import { fetchHtml, type FetchLike } from "./fetch";
-import { matchModels } from "./match";
-import { parseEndpoints, parseEstimatedRequests } from "./parse";
-import { persistSnapshot } from "./persist";
-import { buildSnapshot, SOURCE_URL } from "./snapshot";
+import { fetchHtml, type FetchLike } from "./fetch.ts";
+import { matchModels } from "./match.ts";
+import { parseEndpoints, parseEstimatedRequests } from "./parse.ts";
+import { persistSnapshot } from "./persist.ts";
+import { buildSnapshot, SOURCE_URL } from "./snapshot.ts";
 
 export interface CollectOptions {
   fetchImpl?: FetchLike;
