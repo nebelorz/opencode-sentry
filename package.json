@@ -27,6 +27,8 @@
     "wrangler": "^4.141.0"
   },
   "dependencies": {
-    "hono": "^4.13.9"
+    "cheerio": "^1.2.0",
+    "hono": "^4.13.9",
+    "zod": "^4.6.5"
   }
 }
