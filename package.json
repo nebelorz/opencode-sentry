@@ -15,6 +15,7 @@
     "test": "vitest run",
     "collect": "node src/cli/collect.ts",
     "diff": "node src/cli/diff.ts",
+    "api:data": "node src/cli/api-data.ts",
     "build": "wrangler deploy --dry-run"
   },
   "devDependencies": {
