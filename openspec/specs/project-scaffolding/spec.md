@@ -48,16 +48,6 @@ The project SHALL provide ESLint and Prettier as the linting and formatting tool
 - **WHEN** a contributor runs `pnpm format:check`
 - **THEN** Prettier reports no unformatted files
 
-### Requirement: Stub Cloudflare Worker builds
-
-The project SHALL include a `wrangler.jsonc` configuration and a minimal Hono-based Worker entry that builds without publishing and exposes no API routes.
-
-#### Scenario: Worker builds without deploying
-
-- **WHEN** a contributor runs the Worker build command (a Wrangler dry run)
-- **THEN** Wrangler validates `wrangler.jsonc` and builds the stub Worker
-- **AND** no deployment or publication occurs
-
 ### Requirement: Repository history is tracked in Git
 
 The project SHALL be a Git repository with a `main` default branch and a `.gitignore` that excludes dependency, build, and local secret artifacts.
