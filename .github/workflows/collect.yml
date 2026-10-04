@@ -1,0 +1,64 @@
+name: Collect
+
+on:
+  schedule:
+    - cron: "15 0 * * *"
+    - cron: "15 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: production-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Collect snapshot
+        run: pnpm collect
+      - name: Check snapshot history
+        id: history
+        run: |
+          count=$(find data/snapshots -type f -name '*.json' 2>/dev/null | wc -l)
+          if [ "$count" -ge 2 ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Generate change report
+        if: steps.history.outputs.ready == 'true'
+        run: pnpm diff
+      - name: Regenerate latest pointer
+        if: steps.history.outputs.ready == 'true'
+        run: pnpm latest
+      - name: Validate
+        if: steps.history.outputs.ready == 'true'
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+      - name: Commit generated data
+        run: |
+          for path in data/snapshots data/changes data/latest.json; do
+            if [ -e "$path" ]; then
+              git add -A -- "$path"
+            fi
+          done
+          if git diff --cached --quiet; then
+            echo "No generated data changes to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore(data): update generated data"
+            git push origin HEAD:main
+          fi
