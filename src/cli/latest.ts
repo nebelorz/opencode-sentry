@@ -7,14 +7,13 @@ import type { ZodType } from "zod";
 import { changeReportSchema } from "../schema/change.ts";
 import { snapshotSchema } from "../schema/snapshot.ts";
 
-export interface ApiDataOptions {
+export interface LatestOptions {
   snapshotsDir?: string;
   changesDir?: string;
   latestPath?: string;
-  dataModulePath?: string;
 }
 
-export interface ApiDataIo {
+export interface LatestIo {
   log(message: string): void;
   error(message: string): void;
 }
@@ -27,7 +26,6 @@ export interface LatestPointer {
 const DEFAULT_SNAPSHOTS_DIR = "data/snapshots";
 const DEFAULT_CHANGES_DIR = "data/changes";
 const DEFAULT_LATEST_PATH = "data/latest.json";
-const DEFAULT_DATA_MODULE_PATH = "src/api/data.ts";
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -74,27 +72,10 @@ async function validateFile(path: string, schema: ZodType, label: string): Promi
   }
 }
 
-function importPath(fromDir: string, target: string): string {
-  const path = toPosix(relative(fromDir, target));
-  return path.startsWith(".") ? path : `./${path}`;
-}
-
-function renderDataModule(snapshotImport: string, changesImport: string): string {
-  return [
-    `import snapshot from ${JSON.stringify(snapshotImport)};`,
-    `import changes from ${JSON.stringify(changesImport)};`,
-    "",
-    "export const latestSnapshot: unknown = snapshot;",
-    "export const latestChangeReport: unknown = changes;",
-    "",
-  ].join("\n");
-}
-
-export async function syncApiData(options: ApiDataOptions = {}): Promise<LatestPointer> {
+export async function syncLatest(options: LatestOptions = {}): Promise<LatestPointer> {
   const snapshotsDir = options.snapshotsDir ?? DEFAULT_SNAPSHOTS_DIR;
   const changesDir = options.changesDir ?? DEFAULT_CHANGES_DIR;
   const latestPath = options.latestPath ?? DEFAULT_LATEST_PATH;
-  const dataModulePath = options.dataModulePath ?? DEFAULT_DATA_MODULE_PATH;
 
   const snapshotName = await selectNewest(snapshotsDir, "snapshot");
   const changesName = await selectNewest(changesDir, "change report");
@@ -110,27 +91,19 @@ export async function syncApiData(options: ApiDataOptions = {}): Promise<LatestP
     changes: toPosix(relative(dirname(latestPath), changesPath)),
   };
 
-  const moduleDir = dirname(dataModulePath);
-  const module = renderDataModule(
-    importPath(moduleDir, snapshotPath),
-    importPath(moduleDir, changesPath),
-  );
-
   await mkdir(dirname(latestPath), { recursive: true });
-  await mkdir(moduleDir, { recursive: true });
   await writeFile(latestPath, `${JSON.stringify(pointer, null, 2)}\n`, "utf8");
-  await writeFile(dataModulePath, module, "utf8");
 
   return pointer;
 }
 
-export async function runApiData(
-  options: ApiDataOptions = {},
-  io: ApiDataIo = console,
+export async function runLatest(
+  options: LatestOptions = {},
+  io: LatestIo = console,
 ): Promise<number> {
   try {
-    const pointer = await syncApiData(options);
-    io.log(`API data synced: ${pointer.snapshot}, ${pointer.changes}`);
+    const pointer = await syncLatest(options);
+    io.log(`Latest pointer synced: ${pointer.snapshot}, ${pointer.changes}`);
     return 0;
   } catch (error) {
     io.error(message(error));
@@ -139,5 +112,5 @@ export async function runApiData(
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  process.exitCode = await runApiData();
+  process.exitCode = await runLatest();
 }

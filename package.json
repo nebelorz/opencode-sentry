@@ -15,23 +15,19 @@
     "test": "vitest run",
     "collect": "node src/cli/collect.ts",
     "diff": "node src/cli/diff.ts",
-    "api:data": "node src/cli/api-data.ts",
-    "build": "wrangler deploy --dry-run"
+    "latest": "node src/cli/latest.ts"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260926.1",
     "@types/node": "^26.6.3",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.9",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.1",
-    "vitest": "^5.0.2",
-    "wrangler": "^4.141.0"
+    "vitest": "^5.0.2"
   },
   "dependencies": {
     "cheerio": "^1.2.0",
-    "hono": "^4.13.9",
     "zod": "^4.6.5"
   }
 }

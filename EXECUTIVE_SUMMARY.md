@@ -52,10 +52,10 @@ GitHub Actions
        JSON data in Git
              │
              ▼
-      Cloudflare Worker
-          │       │
-          ▼       ▼
-      /current  /changes
+   raw.githubusercontent.com
+             │
+             ▼
+   OpenCode skill / agent
 ```
 
 ### Included in MVP
@@ -68,8 +68,8 @@ GitHub Actions
 * Storing snapshots in Git.
 * Storing generated change reports in Git.
 * Running the collector twice per day through GitHub Actions.
-* Exposing the latest snapshot through a public API.
-* Exposing the latest detected changes through a public API.
+* Committing a `data/latest.json` pointer to the newest snapshot and change report.
+* Exposing the current snapshot and latest changes as JSON over raw GitHub.
 * Automated tests for parsing, validation and diff logic.
 
 ### Explicitly out of MVP
@@ -82,8 +82,9 @@ The following should **not** be implemented initially:
 * User accounts.
 * Webhooks or notifications.
 * CLI.
+* Public HTTP API or deployed service.
+* Cloudflare Worker or other serverless runtime.
 * OpenCode plugin.
-* OpenCode skill.
 * AI model recommendation endpoint.
 * Model capability/ranking system.
 * Complex API filtering.
@@ -300,54 +301,55 @@ The MVP should not introduce configurable thresholds or severity levels.
 
 ---
 
-## 11. Public API
+## 11. Data Interface
 
-The API should expose two independent resources.
+There is no server. Consumers read committed JSON directly from Git.
 
-### `GET /api/v1/current`
+### Latest pointer
 
-Returns the latest available snapshot.
+`data/latest.json` is the stable entry point and identifies the newest snapshot and change report by relative path.
 
-This endpoint represents the **current state** of OpenCode Go quotas.
+### Current state
 
-### `GET /api/v1/changes`
+The referenced snapshot under `data/snapshots/` represents the **current state** of OpenCode Go quotas.
 
-Returns the changes detected between the latest snapshot and the immediately preceding snapshot.
+### Latest transition
 
-This endpoint represents the **latest transition**.
+The referenced change report under `data/changes/` represents the **latest transition**.
 
-The MVP does not need complex query parameters such as:
+For a public repository these files are served over raw GitHub, for example:
 
 ```text
-?since=
-?model=
-?type=
+https://raw.githubusercontent.com/nebelorz/opencode-sentry/main/data/latest.json
+https://raw.githubusercontent.com/nebelorz/opencode-sentry/main/data/snapshots/<file>.json
+https://raw.githubusercontent.com/nebelorz/opencode-sentry/main/data/changes/<file>.json
 ```
 
-These can be added later if there is a demonstrated need.
-
-The API should remain read-only.
+The interface is read-only by construction. No API endpoints, filtering, or query parameters are provided.
 
 ---
 
-## 12. API Architecture
+## 12. Delivery Architecture
 
-The API should be intentionally thin.
+Delivery is intentionally thin.
 
 ```text
-GitHub repository
+GitHub Actions (scheduled)
        │
        ▼
-JSON data
+collect -> diff -> latest
        │
        ▼
-Cloudflare Worker
+JSON data committed to Git
        │
-       ├── /api/v1/current
-       └── /api/v1/changes
+       ▼
+raw.githubusercontent.com
+       │
+       ▼
+OpenCode skill / agent
 ```
 
-The Worker should **not**:
+The delivery layer must **not**:
 
 * Scrape OpenCode.
 * Parse OpenCode HTML.
@@ -356,7 +358,7 @@ The Worker should **not**:
 
 Those responsibilities belong to the collection pipeline.
 
-The Worker should primarily retrieve and expose already validated JSON data.
+The delivery layer only commits already validated JSON and serves it over Git.
 
 ---
 
@@ -373,8 +375,7 @@ The initial stack is:
 | HTML parsing    | Cheerio              |
 | Validation      | Zod                  |
 | Testing         | Vitest               |
-| API             | Hono                 |
-| API runtime     | Cloudflare Workers   |
+| Delivery        | Committed JSON over raw GitHub |
 | Scheduling      | GitHub Actions       |
 | Storage/history | Git repository       |
 | Formatting      | Prettier             |
@@ -399,7 +400,7 @@ opencode-quota-watch/
 ├── src/
 │   ├── collector/
 │   ├── diff/
-│   ├── api/
+│   ├── cli/
 │   └── schema/
 ├── data/
 │   ├── snapshots/
@@ -414,7 +415,6 @@ opencode-quota-watch/
 ├── tsconfig.json
 ├── eslint.config.js
 ├── prettier.config.js
-├── wrangler.jsonc
 └── README.md
 ```
 
@@ -478,7 +478,6 @@ Create the project foundation:
 * OpenSpec.
 * AGENTS.md.
 * Basic repository structure.
-* Basic Cloudflare Worker configuration.
 * Basic GitHub Actions structure where appropriate.
 
 No scraper implementation.
@@ -504,22 +503,23 @@ Implement:
 * Change report generation.
 * Tests.
 
-### 4. `public-api`
+### 4. `latest-pointer`
 
 Implement:
 
-* Hono API.
-* `/api/v1/current`.
-* `/api/v1/changes`.
-* API response validation/tests.
+* Selection of the newest snapshot and change report.
+* Generation of `data/latest.json` for Git and raw GitHub consumption.
+* Validation and tests.
 
-### 5. `deployment`
+The earlier `public-api` change was removed by `remove-public-api`; there is no HTTP API.
+
+### 5. `scheduled-collection`
 
 Implement:
 
 * GitHub Actions collection workflow.
 * Automatic snapshot/change commits.
-* Cloudflare deployment.
+* Latest-pointer regeneration.
 * Required permissions/configuration.
 * Production validation.
 
@@ -527,7 +527,7 @@ Implement:
 
 Only after the core system is stable:
 
-* OpenCode custom tool/plugin and/or skill.
+* Global OpenCode skill (`quota-watch`).
 * Agent-facing usage documentation.
 * Integration tests where useful.
 
@@ -537,9 +537,9 @@ Each change should remain focused and independently testable.
 
 ## 17. OpenCode Agent Integration
 
-A future goal is to make Quota Watch useful directly from OpenCode agents.
+A goal is to make Quota Watch useful directly from OpenCode agents.
 
-The API should provide facts such as:
+The committed data provides facts such as:
 
 ```text
 Current model quotas
@@ -560,14 +560,7 @@ Quota Watch should not initially implement logic such as:
 
 That would mix data collection with model-selection policy.
 
-A future OpenCode integration could expose tools such as:
-
-```text
-quota_watch_current
-quota_watch_changes
-```
-
-An OpenCode agent could then query the service when it needs current quota information.
+The `opencode-integration` change adds the global OpenCode skill `quota-watch`, which reads the data over raw GitHub and reports current quotas and recent changes. The agent makes the actual model-selection decision.
 
 ---
 
@@ -622,8 +615,8 @@ The MVP is considered successful when:
 4. A second snapshot can be compared with the first.
 5. Model additions/removals are detected.
 6. Quota changes are detected with numerical differences.
-7. The latest snapshot is available through `/api/v1/current`.
-8. The latest diff is available through `/api/v1/changes`.
+7. The latest snapshot is available as committed JSON referenced by `data/latest.json`.
+8. The latest diff is available as committed JSON referenced by `data/latest.json`.
 9. GitHub Actions can run the collection automatically.
 10. The system fails safely when the source format changes.
 11. The project remains small, readable and easy to maintain.
