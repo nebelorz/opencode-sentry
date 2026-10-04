@@ -1,6 +1,7 @@
+import { enrichModels } from "../metadata/index.ts";
 import { fetchHtml, type FetchLike } from "./fetch.ts";
 import { matchModels } from "./match.ts";
-import { parseEndpoints, parseEstimatedRequests } from "./parse.ts";
+import { parseEndpoints, parseEstimatedRequests, parsePricing } from "./parse.ts";
 import { persistSnapshot } from "./persist.ts";
 import { buildSnapshot, SOURCE_URL } from "./snapshot.ts";
 
@@ -17,8 +18,10 @@ export async function collectQuotaSnapshot(options: CollectOptions = {}): Promis
   const html = await fetchHtml(url, fetchImpl);
   const estimated = parseEstimatedRequests(html);
   const endpoints = parseEndpoints(html);
-  const models = matchModels(estimated, endpoints);
-  const snapshot = buildSnapshot(models, now(), url);
+  const pricing = parsePricing(html);
+  const models = matchModels(estimated, endpoints, pricing);
+  const enriched = await enrichModels(models, fetchImpl);
+  const snapshot = buildSnapshot(enriched, now(), url);
 
   return persistSnapshot(snapshot, outputDir);
 }

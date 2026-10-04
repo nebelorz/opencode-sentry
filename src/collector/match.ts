@@ -1,10 +1,21 @@
-import type { SnapshotModel } from "../schema/snapshot.ts";
-import { nameKey, quotaCell } from "./normalize.ts";
-import type { EndpointEntry, EstimatedRequestsTable } from "./parse.ts";
+import type { PricingEntry, SnapshotModel } from "../schema/snapshot.ts";
+import { monthlyLimitCell, nameKey, priceCell, quotaCell } from "./normalize.ts";
+import type { EndpointEntry, EstimatedRequestsTable, PricingRow } from "./parse.ts";
+
+const PLANS = ["go", "go-plus"] as const;
+
+function requiredPrice(raw: string, modelName: string): number {
+  const value = priceCell(raw);
+  if (value === null) {
+    throw new Error(`Pricing for model "${modelName}" is missing a required price`);
+  }
+  return value;
+}
 
 export function matchModels(
   estimated: EstimatedRequestsTable,
   endpoints: EndpointEntry[],
+  pricing: PricingRow[],
 ): SnapshotModel[] {
   const byKey = new Map<string, EndpointEntry>();
   for (const entry of endpoints) {
@@ -44,6 +55,41 @@ export function matchModels(
         monthly: quotaCell(row[estimated.monthlyIndex] ?? ""),
       },
     });
+  }
+
+  const byName = new Map<string, SnapshotModel>();
+  for (const model of models) {
+    byName.set(model.name, model);
+  }
+
+  for (const row of pricing) {
+    const model = byName.get(nameKey(row.baseName));
+    if (!model) {
+      throw new Error(`Pricing model "${row.baseName}" has no snapshot model`);
+    }
+
+    const entry: PricingEntry = {
+      plan: row.plan,
+      variant: row.variant,
+      variantLabel: row.variantLabel,
+      input: requiredPrice(row.input, model.name),
+      output: requiredPrice(row.output, model.name),
+      cachedRead: priceCell(row.cachedRead),
+      cachedWrite: priceCell(row.cachedWrite),
+      monthlyLimit: monthlyLimitCell(row.monthlyLimit),
+    };
+
+    model.pricing = model.pricing ?? [];
+    model.pricing.push(entry);
+  }
+
+  for (const model of models) {
+    for (const plan of PLANS) {
+      const hasPlan = model.pricing?.some((entry) => entry.plan === plan) ?? false;
+      if (!hasPlan) {
+        throw new Error(`Model "${model.name}" has no ${plan} pricing`);
+      }
+    }
   }
 
   return models;

@@ -1,5 +1,8 @@
 import { load, type CheerioAPI } from "cheerio";
 
+import type { PricingPlan } from "../schema/snapshot.ts";
+import { nameKey } from "./normalize.ts";
+
 const HEADING_SELECTOR = "h2, h3, h4";
 const SECTION_BOUNDARY_SELECTOR = "h1, h2, h3, h4, h5, h6";
 
@@ -14,6 +17,27 @@ export interface EstimatedRequestsTable {
 export interface EndpointEntry {
   name: string;
   id: string;
+}
+
+export interface PricingRow {
+  plan: PricingPlan;
+  baseName: string;
+  variant: string;
+  variantLabel: string;
+  input: string;
+  output: string;
+  cachedRead: string;
+  cachedWrite: string;
+  monthlyLimit: string;
+}
+
+interface PricingColumnIndexes {
+  model: number;
+  input: number;
+  output: number;
+  cachedRead: number;
+  cachedWrite: number;
+  monthlyLimit: number;
 }
 
 function canonicalText(raw: string): string {
@@ -203,4 +227,161 @@ export function parseEndpoints(html: string): EndpointEntry[] {
   }
 
   return entries;
+}
+
+const VARIANT_QUALIFIER = /\s*\(([^)]+)\)\s*$/;
+
+function variantKey(qualifier: string): string {
+  return qualifier
+    .toLowerCase()
+    .replace(/≤/g, "le ")
+    .replace(/>/g, "gt ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-?tokens$/, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function splitPricingModel(raw: string): {
+  baseName: string;
+  variant: string;
+  variantLabel: string;
+} {
+  const trimmed = raw.trim();
+  const match = trimmed.match(VARIANT_QUALIFIER);
+
+  if (!match || match.index === undefined) {
+    return { baseName: nameKey(trimmed), variant: "default", variantLabel: "Default" };
+  }
+
+  const baseName = nameKey(trimmed.slice(0, match.index));
+  const variantLabel = match[1]!.trim();
+  return { baseName, variant: variantKey(variantLabel), variantLabel };
+}
+
+function hasPricingHeaders(headerCells: string[]): boolean {
+  const keys = headerCells.map(canonicalText);
+  return (
+    keys.includes("model") &&
+    keys.includes("input") &&
+    keys.includes("output") &&
+    keys.includes("cached read") &&
+    keys.includes("cached write") &&
+    keys.some((key) => key.includes("monthly limit"))
+  );
+}
+
+function mapPricingColumns(headerCells: string[]): PricingColumnIndexes {
+  const indexes: PricingColumnIndexes = {
+    model: -1,
+    input: -1,
+    output: -1,
+    cachedRead: -1,
+    cachedWrite: -1,
+    monthlyLimit: -1,
+  };
+
+  headerCells.forEach((cell, index) => {
+    const key = canonicalText(cell);
+    if (indexes.model < 0 && key === "model") {
+      indexes.model = index;
+    } else if (indexes.input < 0 && key === "input") {
+      indexes.input = index;
+    } else if (indexes.output < 0 && key === "output") {
+      indexes.output = index;
+    } else if (indexes.cachedRead < 0 && key === "cached read") {
+      indexes.cachedRead = index;
+    } else if (indexes.cachedWrite < 0 && key === "cached write") {
+      indexes.cachedWrite = index;
+    } else if (indexes.monthlyLimit < 0 && key.includes("monthly limit")) {
+      indexes.monthlyLimit = index;
+    }
+  });
+
+  if (Object.values(indexes).some((index) => index < 0)) {
+    throw new Error("Pricing table is missing a required header");
+  }
+
+  return indexes;
+}
+
+export function parsePricing(html: string): PricingRow[] {
+  const $ = load(html);
+  const matches: { plan: PricingPlan; indexes: PricingColumnIndexes; rows: string[][] }[] = [];
+
+  $("table").each((_index, element) => {
+    const table = $(element);
+    const rows = table.find("tr").toArray();
+    const headerRow = rows.find((row) => $(row).find("th").length > 0);
+    if (!headerRow) {
+      return;
+    }
+
+    const headerCells = $(headerRow)
+      .children("th")
+      .toArray()
+      .map((cell) => $(cell).text());
+    if (!hasPricingHeaders(headerCells)) {
+      return;
+    }
+
+    const planValue = table.closest("[data-plan-panel]").attr("data-plan-panel");
+    if (planValue !== "go" && planValue !== "go-plus") {
+      throw new Error("Pricing table is not associated with a known plan");
+    }
+
+    const dataRows = rows
+      .filter((row) => row !== headerRow)
+      .map((row) =>
+        $(row)
+          .children("td, th")
+          .toArray()
+          .map((cell) => $(cell).text()),
+      );
+    for (const row of dataRows) {
+      if (row.length !== headerCells.length) {
+        throw new Error("Pricing row has a mismatched number of cells");
+      }
+    }
+
+    matches.push({ plan: planValue, indexes: mapPricingColumns(headerCells), rows: dataRows });
+  });
+
+  const byPlan = new Map<PricingPlan, (typeof matches)[number]>();
+  for (const match of matches) {
+    if (byPlan.has(match.plan)) {
+      throw new Error(`Duplicate ${match.plan} pricing table`);
+    }
+    byPlan.set(match.plan, match);
+  }
+
+  const go = byPlan.get("go");
+  const goPlus = byPlan.get("go-plus");
+  if (!go || !goPlus) {
+    throw new Error("Pricing tables not found for both plans");
+  }
+
+  const pricing: PricingRow[] = [];
+  for (const match of [go, goPlus]) {
+    for (const row of match.rows) {
+      const { baseName, variant, variantLabel } = splitPricingModel(row[match.indexes.model] ?? "");
+      if (baseName.length === 0) {
+        throw new Error("Pricing row is missing a model name");
+      }
+
+      pricing.push({
+        plan: match.plan,
+        baseName,
+        variant,
+        variantLabel,
+        input: row[match.indexes.input] ?? "",
+        output: row[match.indexes.output] ?? "",
+        cachedRead: row[match.indexes.cachedRead] ?? "",
+        cachedWrite: row[match.indexes.cachedWrite] ?? "",
+        monthlyLimit: row[match.indexes.monthlyLimit] ?? "",
+      });
+    }
+  }
+
+  return pricing;
 }
