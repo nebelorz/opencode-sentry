@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { parseEndpoints, parseEstimatedRequests } from "../../src/collector/parse";
+import { parseEndpoints, parseEstimatedRequests, parsePricing } from "../../src/collector/parse";
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 
@@ -139,6 +139,90 @@ describe("parseEndpoints", () => {
   it("throws on duplicate model IDs", () => {
     expect(() => parseEndpoints(fixture("opencode-go.endpoints-duplicate-id"))).toThrow(
       /Duplicate model id/,
+    );
+  });
+});
+
+describe("parsePricing", () => {
+  it("locates both plan tables and associates each row with its plan", () => {
+    const rows = parsePricing(fixture("opencode-go.valid"));
+
+    expect(rows).toHaveLength(8);
+    expect(rows.filter((row) => row.plan === "go")).toHaveLength(4);
+    expect(rows.filter((row) => row.plan === "go-plus")).toHaveLength(4);
+    expect(rows[0]).toEqual({
+      plan: "go",
+      baseName: "Kimi K2.5",
+      variant: "default",
+      variantLabel: "Default",
+      input: "$0.95",
+      output: "$4.00",
+      cachedRead: "$0.16",
+      cachedWrite: "-",
+      monthlyLimit: "$60",
+    });
+  });
+
+  it("derives default, peak, off-peak, and token-tier variants", () => {
+    const rows = parsePricing(fixture("opencode-go.pricing-variants"));
+    const findRow = (plan: string, variant: string) =>
+      rows.find((row) => row.plan === plan && row.variant === variant);
+
+    expect(findRow("go", "off-peak")).toMatchObject({
+      baseName: "DeepSeek V4.1 Flash",
+      variantLabel: "Off-Peak",
+    });
+    expect(findRow("go", "peak")).toMatchObject({
+      baseName: "DeepSeek V4.1 Flash",
+      variantLabel: "Peak",
+    });
+    expect(findRow("go", "le-256k")).toMatchObject({
+      baseName: "Qwen3.7 Plus",
+      variantLabel: "≤ 256K tokens",
+    });
+    expect(findRow("go", "gt-256k")).toMatchObject({
+      baseName: "Qwen3.7 Plus",
+      variantLabel: "> 256K tokens",
+    });
+    expect(findRow("go", "default")).toMatchObject({
+      baseName: "Kimi K2.5",
+      variantLabel: "Default",
+    });
+    expect(findRow("go-plus", "off-peak")).toBeDefined();
+    expect(findRow("go-plus", "gt-256k")).toBeDefined();
+  });
+
+  it("maps columns regardless of order", () => {
+    const rows = parsePricing(fixture("opencode-go.pricing-reordered"));
+
+    expect(rows[0]).toEqual({
+      plan: "go",
+      baseName: "Kimi K2.5",
+      variant: "default",
+      variantLabel: "Default",
+      input: "$0.95",
+      output: "$4.00",
+      cachedRead: "$0.16",
+      cachedWrite: "-",
+      monthlyLimit: "$60",
+    });
+  });
+
+  it("throws when both plan tables are missing", () => {
+    expect(() => parsePricing(fixture("opencode-go.pricing-missing-table"))).toThrow(
+      /not found for both plans/,
+    );
+  });
+
+  it("throws when one plan table is missing", () => {
+    expect(() => parsePricing(fixture("opencode-go.pricing-missing-plan"))).toThrow(
+      /not found for both plans/,
+    );
+  });
+
+  it("throws when a required header is missing", () => {
+    expect(() => parsePricing(fixture("opencode-go.pricing-missing-header"))).toThrow(
+      /not found for both plans/,
     );
   });
 });

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runCollect, type CollectIo } from "../../src/cli/collect.ts";
 import type { FetchLike } from "../../src/collector/fetch.ts";
 import { collectQuotaSnapshot } from "../../src/collector/index.ts";
+import { CATALOG_URL } from "../../src/metadata/index.ts";
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 
@@ -17,7 +18,13 @@ function fixture(name: string): string {
 }
 
 function serve(html: string): FetchLike {
-  return async () => new Response(html, { status: 200 });
+  const catalog = readFileSync(join(fixturesDir, "models-dev.catalog.json"), "utf8");
+  return async (url) => {
+    if (url === CATALOG_URL) {
+      return new Response(catalog, { status: 200 });
+    }
+    return new Response(html, { status: 200 });
+  };
 }
 
 function recordingIo() {

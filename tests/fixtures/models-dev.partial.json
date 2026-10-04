@@ -1,0 +1,16 @@
+{
+  "opencode-go": {
+    "id": "opencode-go",
+    "name": "OpenCode Go",
+    "env": ["OPENCODE_API_KEY"],
+    "npm": "@ai-sdk/openai-compatible",
+    "api": "https://opencode.ai/api",
+    "models": {
+      "opencode/kimi-k2.5": {
+        "id": "opencode/kimi-k2.5",
+        "name": "Kimi K2.5",
+        "limit": { "context": 256000, "output": 64000 }
+      }
+    }
+  }
+}

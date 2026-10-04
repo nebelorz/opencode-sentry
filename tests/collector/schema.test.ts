@@ -99,4 +99,181 @@ describe("snapshot schema", () => {
 
     expect(() => snapshotSchema.parse(candidate)).toThrow();
   });
+
+  it("accepts optional pricing entries including null and unlimited", () => {
+    const candidate = {
+      ...validSnapshot,
+      models: [
+        {
+          ...validSnapshot.models[0],
+          pricing: [
+            {
+              plan: "go",
+              variant: "off-peak",
+              variantLabel: "Off-Peak",
+              input: 0.15,
+              output: 0.6,
+              cachedRead: 0.003,
+              cachedWrite: null,
+              monthlyLimit: { amount: 60, currency: "USD" },
+            },
+            {
+              plan: "go-plus",
+              variant: "default",
+              variantLabel: "Default",
+              input: 0,
+              output: 0,
+              cachedRead: 0,
+              cachedWrite: null,
+              monthlyLimit: "unlimited",
+            },
+          ],
+        },
+      ],
+    };
+
+    const parsed = snapshotSchema.parse(candidate);
+
+    expect(parsed.models[0]?.pricing).toHaveLength(2);
+  });
+
+  it("rejects an unknown pricing plan", () => {
+    const candidate = {
+      ...validSnapshot,
+      models: [
+        {
+          ...validSnapshot.models[0],
+          pricing: [
+            {
+              plan: "pro",
+              variant: "default",
+              variantLabel: "Default",
+              input: 1,
+              output: 1,
+              cachedRead: null,
+              cachedWrite: null,
+              monthlyLimit: { amount: 1, currency: "USD" },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() => snapshotSchema.parse(candidate)).toThrow();
+  });
+
+  it("rejects a pricing entry missing a required price", () => {
+    const candidate = {
+      ...validSnapshot,
+      models: [
+        {
+          ...validSnapshot.models[0],
+          pricing: [
+            {
+              plan: "go",
+              variant: "default",
+              variantLabel: "Default",
+              output: 1,
+              cachedRead: null,
+              cachedWrite: null,
+              monthlyLimit: { amount: 1, currency: "USD" },
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(() => snapshotSchema.parse(candidate)).toThrow();
+  });
+
+  it("accepts optional model metadata with the selected fields", () => {
+    const candidate = {
+      ...validSnapshot,
+      models: [
+        {
+          ...validSnapshot.models[0],
+          metadata: {
+            contextLimit: 256000,
+            outputLimit: 64000,
+            modalities: { input: ["text", "image"], output: ["text"] },
+            capabilities: {
+              attachment: true,
+              reasoning: true,
+              toolCall: true,
+              structuredOutput: true,
+              temperature: true,
+              openWeights: false,
+            },
+            family: "kimi",
+            knowledgeCutoff: "2025-04",
+            releaseDate: "2025-06-01",
+            canonicalModelId: "moonshotai/kimi-k2.5",
+          },
+        },
+      ],
+    };
+
+    const parsed = snapshotSchema.parse(candidate);
+
+    expect(parsed.models[0]?.metadata?.contextLimit).toBe(256000);
+    expect(parsed.models[0]?.metadata?.capabilities?.openWeights).toBe(false);
+  });
+
+  it("accepts metadata with only the required limits", () => {
+    const candidate = {
+      ...validSnapshot,
+      models: [
+        {
+          ...validSnapshot.models[0],
+          metadata: { contextLimit: 1000, outputLimit: 500 },
+        },
+      ],
+    };
+
+    const parsed = snapshotSchema.parse(candidate);
+
+    expect(parsed.models[0]?.metadata).toEqual({ contextLimit: 1000, outputLimit: 500 });
+  });
+
+  it("rejects metadata with a negative limit", () => {
+    const candidate = {
+      ...validSnapshot,
+      models: [
+        {
+          ...validSnapshot.models[0],
+          metadata: { contextLimit: -1, outputLimit: 500 },
+        },
+      ],
+    };
+
+    expect(() => snapshotSchema.parse(candidate)).toThrow();
+  });
+
+  it("rejects metadata with a decimal limit", () => {
+    const candidate = {
+      ...validSnapshot,
+      models: [
+        {
+          ...validSnapshot.models[0],
+          metadata: { contextLimit: 1000.5, outputLimit: 500 },
+        },
+      ],
+    };
+
+    expect(() => snapshotSchema.parse(candidate)).toThrow();
+  });
+
+  it("rejects metadata missing the output limit", () => {
+    const candidate = {
+      ...validSnapshot,
+      models: [
+        {
+          ...validSnapshot.models[0],
+          metadata: { contextLimit: 1000 },
+        },
+      ],
+    };
+
+    expect(() => snapshotSchema.parse(candidate)).toThrow();
+  });
 });
