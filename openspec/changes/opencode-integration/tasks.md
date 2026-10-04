@@ -17,6 +17,6 @@
 
 ## 4. Verification
 
-- [ ] 4.1 After the data is pushed, fetch the raw `data/latest.json` and the referenced files and verify they resolve and are schema-valid
+- [x] 4.1 After the data is pushed, fetch the raw `data/latest.json` and the referenced files and verify they resolve and are schema-valid
 - [ ] 4.2 Invoke the skill in a session and verify it reports current quotas, the latest changes, and freshness timestamps, and that it does not fabricate data when a fetch fails
 - [x] 4.3 Verify no server, endpoint, secret, or new dependency was introduced
