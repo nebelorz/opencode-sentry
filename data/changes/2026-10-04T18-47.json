@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "from": "2026-09-27T17:38:22.942Z",
+  "to": "2026-10-04T18:47:44.664Z",
+  "changes": [
+    {
+      "type": "model_removed",
+      "model": {
+        "id": "glm-5.1",
+        "name": "GLM-5.1"
+      },
+      "previousEstimatedRequests": {
+        "fiveHour": 880,
+        "weekly": 2150,
+        "monthly": 4300
+      }
+    },
+    {
+      "type": "model_removed",
+      "model": {
+        "id": "qwen3.6-plus",
+        "name": "Qwen3.6 Plus"
+      },
+      "previousEstimatedRequests": {
+        "fiveHour": 3300,
+        "weekly": 8200,
+        "monthly": 16300
+      }
+    },
+    {
+      "type": "model_removed",
+      "model": {
+        "id": "qwen3.7-max",
+        "name": "Qwen3.7 Max"
+      },
+      "previousEstimatedRequests": {
+        "fiveHour": 170,
+        "weekly": 420,
+        "monthly": 840
+      }
+    }
+  ]
+}
