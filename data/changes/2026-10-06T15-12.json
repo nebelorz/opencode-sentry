@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "from": "2026-10-05T17:09:10.172Z",
+  "to": "2026-10-06T15:12:44.425Z",
+  "changes": [
+    {
+      "type": "model_added",
+      "model": {
+        "id": "space-bunny",
+        "name": "Space Bunny"
+      },
+      "estimatedRequests": {
+        "fiveHour": 3130,
+        "weekly": 7810,
+        "monthly": 15630
+      }
+    },
+    {
+      "type": "model_removed",
+      "model": {
+        "id": "space-bunny-free",
+        "name": "Space Bunny Free"
+      },
+      "previousEstimatedRequests": {
+        "fiveHour": "unlimited",
+        "weekly": "unlimited",
+        "monthly": "unlimited"
+      }
+    }
+  ]
+}
