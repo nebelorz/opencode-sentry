@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "from": "2026-10-07T15:33:47.495Z",
+  "to": "2026-10-08T15:37:35.942Z",
+  "changes": [
+    {
+      "type": "model_added",
+      "model": {
+        "id": "claude-haiku-5-5",
+        "name": "Claude Haiku 5.5"
+      },
+      "estimatedRequests": {
+        "fiveHour": 3850,
+        "weekly": 9620,
+        "monthly": 19230
+      }
+    },
+    {
+      "type": "model_added",
+      "model": {
+        "id": "step-5-preview-free",
+        "name": "Step 5 Preview Free"
+      },
+      "estimatedRequests": {
+        "fiveHour": "unlimited",
+        "weekly": "unlimited",
+        "monthly": "unlimited"
+      }
+    }
+  ]
+}
